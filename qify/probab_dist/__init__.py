@@ -1,1 +1,1 @@
-from ._core import is_proper, uniform
+from .core import is_proper, uniform

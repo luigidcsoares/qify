@@ -1,8 +1,8 @@
 import doctest
 import unittest
 
-from qify.probab_dist import _core
+from qify.probab_dist import core
 
 def load_tests(loader, tests, ignore):
-    tests.addTests(doctest.DocTestSuite(_core))
+    tests.addTests(doctest.DocTestSuite(core))
     return tests
