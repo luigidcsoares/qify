@@ -13,6 +13,24 @@ def is_proper(ch: pd.Series, input_level: int | str = 0) -> bool:
     By default, assumes that the input of the channel corresponds
     to the first level of the Series index. This behavior can be
     overwritten through the parameter `input_level`.
+
+    ## Example
+
+    >>> index = pd.MultiIndex.from_tuples([
+    ...   ("x0", "y0"), ("x0", "y1"),
+    ...   ("x1", "y0"), ("x1", "y1")
+    ... ])
+    >>> channel = pd.Series([1/2, 1/2, 1/3, 2/3], index=index)
+    >>> is_proper(channel)
+    True
+
+    >>> index = pd.MultiIndex.from_tuples([
+    ...   ("x0", "y0"), ("x0", "y1"),
+    ...   ("x1", "y0"), ("x1", "y1")
+    ... ])
+    >>> channel = pd.Series([1/2, 1/2, 1/3, 1/3], index=index)
+    >>> is_proper(channel)
+    False
     """
     row_sums = ch.groupby(level=input_level).sum()
     return np.isclose(row_sums, 1).all() and ch.ge(0).all()

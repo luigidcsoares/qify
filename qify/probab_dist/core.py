@@ -9,6 +9,20 @@ def is_proper(dist: pd.Series) -> bool:
     """
     Checks if `dist` really corresponds to probab. distribution,
     i.e., it is 1-summing and nonnegative.
+
+    ## Example
+
+    >>> dist = pd.Series([1/3, 1/3, 1/3])
+    >>> is_proper(dist)
+    True
+
+    >>> dist = pd.Series([1/3, 1/3, 1/4])
+    >>> is_proper(dist)
+    False
+
+    >>> dist = pd.Series([1/3, 1/3, 2/3])
+    >>> is_proper(dist)
+    False
     """
     return np.isclose(dist.sum(), 1) and dist.ge(0).all()
 
