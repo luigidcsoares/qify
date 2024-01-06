@@ -3,6 +3,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from qify.probab_dist.core import ProbabDist
+
 def is_proper(ch: pd.Series, input_level: int | str = 0) -> bool:
     """
     Checks if `ch` really corresponds to a channel. That is,
@@ -10,7 +12,7 @@ def is_proper(ch: pd.Series, input_level: int | str = 0) -> bool:
 
     By default, assumes that the input of the channel corresponds
     to the first level of the Series index. This behavior can be
-    overwritten through the parameter `input_name`.
+    overwritten through the parameter `input_level`.
     """
     row_sums = ch.groupby(level=input_level).sum()
     return np.isclose(row_sums, 1).all() and ch.ge(0).all()
@@ -27,8 +29,8 @@ def from_pandas(
     ## Example
         
     Consider a dataset that stores demographic data about people.
-    Maybe the adversary is interested in trying to learn someone's
-    age, and the only thing that they can do is to query the
+    Maybe we are interested in trying to learn someone's
+    age, and the only thing that we can do is to query the
     database and observe a partition of the dataset induced by
     their target's gender. The corresponding channel is
 
@@ -89,6 +91,39 @@ class Channel:
 
     def inspect(self) -> pd.Series:
         return self._dists.copy()
+
+
+    def push_prior(self, pi: ProbabDist) -> pd.Series:
+        """
+        Pushes a prior distribution pi through the channel to
+        construct a joint. The result is a pandas Series,
+        following the same format of the channel.
+
+        ## Example
+
+        Suppose we want to learn someone's age and we know a 
+        that the population is ageing, so the distribution of
+        young vs old people (say, > 40) is such that 4/5 are old:
+        
+        >>> df = pd.DataFrame({
+        ...   "age":  [46, 58, 46, 23, 23],
+        ...   "gender": ["m", "m", "f", "f", "f"]
+        ... })
+        >>> pi = ProbabDist(
+        ...   [2/5, 2/5, 1/5],
+        ...   df["age"].drop_duplicates(),
+        ...   "age"
+        ... )
+        >>> ch = from_pandas(df, "age", ["gender"])
+        >>> ch.push_prior(pi)
+        age  gender
+        23   f         0.2
+        46   f         0.2
+             m         0.2
+        58   m         0.4
+        dtype: float64
+        """
+        return pi.mul(self._dists, level=self.input_name)
 
     
     def cascade(self, other: Channel) -> Channel:

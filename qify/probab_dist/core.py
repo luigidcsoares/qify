@@ -20,11 +20,12 @@ def uniform(values: set[Any], name: str) -> ProbabDist:
     ## Example
 
     >>> uniform(["00", "01", "10", "11"],  "password")
+    password
     00    0.25
     01    0.25
     10    0.25
     11    0.25
-    Name: password, dtype: float64
+    dtype: float64
     """
     n = len(values)
     dist = [1/n] * n
@@ -39,12 +40,14 @@ class ProbabDist:
     in other computations (merging, etc).
     """
     def __init__(
-            self,
-            dist: list[float | Decimal],
-            values: list[Any],
-            name: str
+        self,
+        dist: list[float | Decimal],
+        values: list[Any],
+        name: str
     ):
-        self._dist = pd.Series(dist, index=values, name=name)
+        index = pd.Index(values, name=name)
+        self._dist = pd.Series(dist, index=index)
+        
         if not is_proper(self._dist):
             raise ValueError("Invalid probability distribution!")
 
@@ -52,7 +55,7 @@ class ProbabDist:
         
         # Increment the class with some methods from pandas Series,
         # so that it works kinda like a wrapper for Series:
-        methods = ["min", "max", "sum"]
+        methods = ["min", "max", "sum", "mul"]
         for method in methods:
             setattr(self, method, getattr(self._dist, method))
         
