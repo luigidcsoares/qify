@@ -9,7 +9,7 @@
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
-      pythonPkgs = pkgs.python3Packages;
+      pythonPkgs = pkgs.python310Packages;
     in {
       devShells.${system}.default = pkgs.mkShell {
         buildInputs = with pythonPkgs; [numpy pandas];
