@@ -1,0 +1,22 @@
+[project]
+name = "qify"
+version = "0.0.1"
+authors = [
+  { name= "Luigi D. C. Soares", email = "luigidcsoares@gmail.com" },
+]
+description = "QIFy - A Python QIF library"
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/qify"
+Issues = "https://github.com/yourusername/qify/issues"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"

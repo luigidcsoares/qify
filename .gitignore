@@ -1,0 +1,5 @@
+# Byte-compiled Python files
+__pycache__/
+
+# Direnv files
+.direnv/
