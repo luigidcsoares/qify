@@ -200,3 +200,57 @@ class Channel:
         )
 
         return Channel(dists, self.input_name, other.output_names)
+
+
+    def parallel(self, other: Channel) -> Channel:
+        """
+        Computes the parallel composition B || C,
+        where B is the current object and C is `other`.
+
+        ## Example
+
+        >>> import pandas as pd
+        >>> import qify
+        >>> index_b = pd.MultiIndex.from_tuples(
+        ...   [("x1", "y1"), ("x1", "y2"), ("x2", "y1"), ("x2", "y2")],
+        ...   names=["X", "Y"]
+        ... )
+        >>> ch_b = qify.Channel(
+        ...   pd.Series([0.4, 0.6, 0.8, 0.2], index=index_b),
+        ...   "X", ["Y"]
+        ... )
+        >>> index_c = pd.MultiIndex.from_tuples(
+        ...   [("x1", "y1"), ("x1", "y3"), ("x2", "y1"), ("x2", "y3")],
+        ...   names=["X", "Y"]
+        ... )
+        >>> ch_c = qify.Channel(
+        ...   pd.Series([1, 0, 0.3, 0.7], index=index_c),
+        ...   "X", ["Y"]
+        ... )
+        >>> ch_b.parallel(ch_c)
+        X   Yb  Yc
+        x1  y1  y1    0.40
+                y3    0.00
+            y2  y1    0.60
+                y3    0.00
+        x2  y1  y1    0.24
+                y3    0.56
+            y2  y1    0.06
+                y3    0.14
+        dtype: float64
+        """
+        if self.input_name != other.input_name:
+            raise ValueError("Incompatible channels: input is not the same!")
+
+        dists = self._dists.reset_index(name="b").merge(
+            other._dists.reset_index(name="c"),
+            on=self.input_name,
+            suffixes=("b", "c")
+        )
+
+        output_names = dists.columns[
+            ~dists.columns.isin([self.input_name, "b", "c"])
+        ].tolist()
+
+        dists = dists.set_index([self.input_name] + output_names)
+        return Channel(dists["b"] * dists["c"], self.input_name, output_names)
