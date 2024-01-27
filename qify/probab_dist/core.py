@@ -65,8 +65,6 @@ class ProbabDist:
         if not is_proper(self._dist):
             raise ValueError("Invalid probability distribution!")
 
-        self._name = name
-        
         # Increment the class with some methods from pandas Series,
         # so that it works kinda like a wrapper for Series:
         methods = ["min", "max", "sum", "mul"]
@@ -75,8 +73,13 @@ class ProbabDist:
         
 
     @property
+    def input_values(self) -> pd.Index:
+        return self._dist.index
+
+    
+    @property
     def name(self) -> str:
-        return self._name
+        return self.input_values.name
 
 
     def __repr__(self) -> str:

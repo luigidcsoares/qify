@@ -13,6 +13,9 @@ def prior(pi: ProbabDist, g_series: pd.Series) -> float:
     Computes the prior g-vulnerability of a distribution.
 
     :param g_series: pandas Series indexed by actions and secrets.
+    	The index level that refers to the secret values must match
+    	the name of the index in the prior `pi`, while the index
+    	level that refers to the actions must be named "action".
     
     ## Example
 
@@ -31,7 +34,7 @@ def prior(pi: ProbabDist, g_series: pd.Series) -> float:
     ... )
     >>> index = pd.MultiIndex.from_tuples(
     ...   [(w, x) for w in actions for x in secrets],
-    ...   names=["action", "secret"]
+    ...   names=["action", "password"]
     ... )
     >>> g_series = pd.Series(
     ...   {(w, x): 1 if x in w else 0 for w, x in index},
@@ -45,7 +48,7 @@ def prior(pi: ProbabDist, g_series: pd.Series) -> float:
     
     >>> index = pd.MultiIndex.from_tuples(
     ...   [(w, x) for w in actions for x in secrets if x in w],
-    ...   names=["action", "secret"]
+    ...   names=["action", "password"]
     ... )
     >>> g_series = pd.Series([1] * len(index), index=index)
     >>> pi = uniform(secrets,  "password")
@@ -54,11 +57,12 @@ def prior(pi: ProbabDist, g_series: pd.Series) -> float:
     """
     return (
         pi
-        .mul(g_series, level="secret")
+        .mul(g_series, level=pi.name)
         .groupby("action")
         .sum()
         .max()
     )
+
 
 @multimethod
 def prior(
@@ -85,7 +89,7 @@ def prior(
     """
     index = pd.MultiIndex.from_tuples(
         [(w, x) for w in actions for x in pi.input_values],
-        names=["action", "secret"]
+        names=["action", pi.name]
     )
 
     g_series = pd.Series(
@@ -94,23 +98,3 @@ def prior(
     )
 
     return prior(pi, g_series)
-
-@multimethod
-def prior(pi: ProbabDist, g_func: Callable) -> float:
-    """
-    Computes the prior g-vulnerability of a distribution.
-    Assumes that the set of actions is the same of the secrets.
-
-    ## Example
-
-    Consider a 2-bit password and say that the user is allowed only
-    one attempt before getting locked. Then, the user's possible
-    actions are to guess one of the four possible passwords, and
-    thus the set of actions is exactly the set of secrets:
-
-    >>> from qify.probab_dist import uniform
-    >>> secrets = ["00", "01", "10", "11"]
-    >>> prior(pi, lambda w, x: 1 if x in w else 0)
-    0.25
-    """
-    return prior(pi, g_func, pi.input_values)
