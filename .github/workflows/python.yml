@@ -13,9 +13,7 @@ permissions:
   contents: read
 
 jobs:
-  build:
-
-    name: Unit and Doctests
+  test-check:
     runs-on: ubuntu-latest
 
     steps:
