@@ -87,14 +87,16 @@ class Channel:
             self,
             dists: pd.Series,
             secret_name: str,
-            output_names: list[str]
+            output_names: list[str],
+            bypass_check: bool = False,
     ):
-        if not is_proper(dists):
+        if not bypass_check and not is_proper(dists):
             raise ValueError("Input does not form a valid channel!")
-        
+
         self._dists = dists
         self._secret_name = secret_name
         self._output_names = output_names
+        self._bypass_check = bypass_check
 
     
     @property
@@ -148,6 +150,8 @@ class Channel:
         dtype: float64
         """
         return pi.mul(self._dists, level=self.secret_name)
+
+    
     def cascade(self, other: Channel) -> Channel:
         """
         Computes the cascading BC as matrix multiplication,
@@ -208,7 +212,12 @@ class Channel:
             .sum()
         )
 
-        return Channel(dists, self.secret_name, other.output_names)
+        return Channel(
+            dists,
+            self.secret_name,
+            other.output_names,
+            bypass_check=self._bypass_check
+        )
 
 
     def parallel(self, other: Channel) -> Channel:
@@ -262,4 +271,9 @@ class Channel:
         ].tolist()
 
         dists = dists.set_index([self.secret_name] + output_names)
-        return Channel(dists["b"] * dists["c"], self.secret_name, output_names)
+        return Channel(
+            dists["b"] * dists["c"],
+            self.secret_name,
+            output_names,
+            bypass_check=self._bypass_check
+        )
