@@ -12,16 +12,18 @@ def is_proper(dist: pd.Series) -> bool:
 
     ## Example
 
+    >>> import pandas as pd
+    >>> import qify
     >>> dist = pd.Series([1/3, 1/3, 1/3])
-    >>> is_proper(dist)
+    >>> qify.probab_dist.is_proper(dist)
     True
 
     >>> dist = pd.Series([1/3, 1/3, 1/4])
-    >>> is_proper(dist)
+    >>> qify.probab_dist.is_proper(dist)
     False
 
     >>> dist = pd.Series([1/3, 1/3, 2/3])
-    >>> is_proper(dist)
+    >>> qify.probab_dist.is_proper(dist)
     False
     """
     return np.isclose(dist.sum(), 1) and dist.ge(0).all()
@@ -33,7 +35,8 @@ def uniform(values: set[Any], name: str) -> ProbabDist:
 
     ## Example
 
-    >>> uniform(["00", "01", "10", "11"],  "password")
+    >>> import qify
+    >>> qify.probab_dist.uniform(["00", "01", "10", "11"],  "password")
     password
     00    0.25
     01    0.25
@@ -73,13 +76,13 @@ class ProbabDist:
         
 
     @property
-    def input_values(self) -> pd.Index:
+    def secrets(self) -> pd.Index:
         return self._dist.index
 
     
     @property
-    def name(self) -> str:
-        return self.input_values.name
+    def secret_name(self) -> str:
+        return self.secrets.name
 
 
     def __repr__(self) -> str:

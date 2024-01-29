@@ -16,12 +16,14 @@ def is_proper(ch: pd.Series, input_level: int | str = 0) -> bool:
 
     ## Example
 
+    >>> import qify
+    >>> import pandas as pd
     >>> index = pd.MultiIndex.from_tuples([
     ...   ("x0", "y0"), ("x0", "y1"),
     ...   ("x1", "y0"), ("x1", "y1")
     ... ])
     >>> channel = pd.Series([1/2, 1/2, 1/3, 2/3], index=index)
-    >>> is_proper(channel)
+    >>> qify.channel.is_proper(channel)
     True
 
     >>> index = pd.MultiIndex.from_tuples([
@@ -29,7 +31,7 @@ def is_proper(ch: pd.Series, input_level: int | str = 0) -> bool:
     ...   ("x1", "y0"), ("x1", "y1")
     ... ])
     >>> channel = pd.Series([1/2, 1/2, 1/3, 1/3], index=index)
-    >>> is_proper(channel)
+    >>> qify.channel.is_proper(channel)
     False
     """
     row_sums = ch.groupby(level=input_level).sum()
@@ -38,7 +40,7 @@ def is_proper(ch: pd.Series, input_level: int | str = 0) -> bool:
 
 def from_pandas(
         df: pd.DataFrame,
-        input_name: str,
+        secret_name: str,
         output_names: list[str]
 ) -> Channel:
     """
@@ -52,11 +54,13 @@ def from_pandas(
     database and observe a partition of the dataset induced by
     their target's gender. The corresponding channel is
 
+    >>> import qify
+    >>> import pandas as pd
     >>> df = pd.DataFrame({
     ...   "age":  [46, 58, 46, 23, 23],
     ...   "gender": ["m", "m", "f", "f", "f"]
     ... })
-    >>> from_pandas(df, "age", ["gender"])
+    >>> qify.channel.from_pandas(df, "age", ["gender"])
     age  gender
     23   f         1.0
     46   f         0.5
@@ -64,13 +68,13 @@ def from_pandas(
     58   m         1.0
     dtype: float64
     """
-    freq_input = df[input_name].value_counts()
+    freq_input = df[secret_name].value_counts()
     dists = (
-        df.groupby([input_name] + output_names)
+        df.groupby([secret_name] + output_names)
         .size()
-        .div(freq_input, level=input_name)
+        .div(freq_input, level=secret_name)
     )
-    return Channel(dists, input_name, output_names)
+    return Channel(dists, secret_name, output_names)
 
 
 class Channel:
@@ -82,20 +86,20 @@ class Channel:
     def __init__(
             self,
             dists: pd.Series,
-            input_name: str,
+            secret_name: str,
             output_names: list[str]
     ):
         if not is_proper(dists):
-            raise ValueError("Input is not a valid channel!")
+            raise ValueError("Input does not form a valid channel!")
         
         self._dists = dists
-        self._input_name = input_name
+        self._secret_name = secret_name
         self._output_names = output_names
 
     
     @property
-    def input_name(self) -> str:
-        return self._input_name
+    def secret_name(self) -> str:
+        return self._secret_name
     
     
     @property
@@ -122,17 +126,19 @@ class Channel:
         Suppose we want to learn someone's age and we know a 
         that the population is ageing, so the distribution of
         young vs old people (say, > 40) is such that 4/5 are old:
-        
+
+        >>> import pandas as pd
+        >>> import qify
         >>> df = pd.DataFrame({
         ...   "age":  [46, 58, 46, 23, 23],
         ...   "gender": ["m", "m", "f", "f", "f"]
         ... })
-        >>> pi = ProbabDist(
+        >>> pi = qify.ProbabDist(
         ...   [2/5, 2/5, 1/5],
         ...   df["age"].drop_duplicates(),
         ...   "age"
         ... )
-        >>> ch = from_pandas(df, "age", ["gender"])
+        >>> ch = qify.channel.from_pandas(df, "age", ["gender"])
         >>> ch.push_prior(pi)
         age  gender
         23   f         0.2
@@ -141,9 +147,7 @@ class Channel:
         58   m         0.4
         dtype: float64
         """
-        return pi.mul(self._dists, level=self.input_name)
-
-    
+        return pi.mul(self._dists, level=self.secret_name)
     def cascade(self, other: Channel) -> Channel:
         """
         Computes the cascading BC as matrix multiplication,
@@ -167,7 +171,8 @@ class Channel:
 
         The cascading BC maps #Tr. to Gender:
 
-        >>> from qify.channel import from_pandas
+        >>> import pandas as pd
+        >>> import qify
         >>> correlation_df = pd.DataFrame({
         ...   "age": [46, 58, 46, 23, 23],
         ...   "n_tr": [4, 4, 5, 10, 10]
@@ -176,8 +181,12 @@ class Channel:
         ...   "age":  [46, 58, 46, 23, 23],
         ...   "gender": ["m", "m", "f", "f", "f"]
         ... })
-        >>> ch_b = from_pandas(correlation_df, "n_tr", ["age"])
-        >>> ch_c = from_pandas(demographic_df, "age", ["gender"])
+        >>> ch_b = qify.channel.from_pandas(
+        ...   correlation_df, "n_tr", ["age"]
+        ... )
+        >>> ch_c = qify.channel.from_pandas(
+        ...   demographic_df, "age", ["gender"]
+        ... )
         >>> ch_b.cascade(ch_c)
         n_tr  gender
         4     f         0.25
@@ -187,8 +196,8 @@ class Channel:
         10    f         1.00
         Name: bc, dtype: float64
         """
-        merge_on = other.input_name
-        group_on = [self.input_name] + other.output_names
+        merge_on = other.secret_name
+        group_on = [self.secret_name] + other.output_names
         
         dists = (
             self._dists.reset_index(name="b").merge(
@@ -199,7 +208,7 @@ class Channel:
             .sum()
         )
 
-        return Channel(dists, self.input_name, other.output_names)
+        return Channel(dists, self.secret_name, other.output_names)
 
 
     def parallel(self, other: Channel) -> Channel:
@@ -239,18 +248,18 @@ class Channel:
                 y3    0.14
         dtype: float64
         """
-        if self.input_name != other.input_name:
+        if self.secret_name != other.secret_name:
             raise ValueError("Incompatible channels: input is not the same!")
 
         dists = self._dists.reset_index(name="b").merge(
             other._dists.reset_index(name="c"),
-            on=self.input_name,
+            on=self.secret_name,
             suffixes=("b", "c")
         )
 
         output_names = dists.columns[
-            ~dists.columns.isin([self.input_name, "b", "c"])
+            ~dists.columns.isin([self.secret_name, "b", "c"])
         ].tolist()
 
-        dists = dists.set_index([self.input_name] + output_names)
-        return Channel(dists["b"] * dists["c"], self.input_name, output_names)
+        dists = dists.set_index([self.secret_name] + output_names)
+        return Channel(dists["b"] * dists["c"], self.secret_name, output_names)

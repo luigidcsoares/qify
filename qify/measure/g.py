@@ -65,7 +65,7 @@ def prior(pi: ProbabDist, g_series: pd.Series) -> float:
     >>> pi = qify.ProbabDist(
     ...   [1/6, 1/3, 1/3, 1/6],secrets, "password"
     ... )
-    >>> prior(pi, g_series)
+    >>> qify.measure.g.prior(pi, g_series)
     0.6666666666666666
 
     The cells in which gain is 0 are not really necessary, though:
@@ -75,7 +75,7 @@ def prior(pi: ProbabDist, g_series: pd.Series) -> float:
     ...   names=["action", "password"]
     ... )
     >>> g_series = pd.Series([1] * len(index), index=index)
-    >>> prior(pi, g_series)
+    >>> qify.measure.g.prior(pi, g_series)
     0.6666666666666666
     """
     return pi.mul(g_series).groupby("action").sum().max()
@@ -103,11 +103,11 @@ def prior(
     >>> pi = qify.ProbabDist(
     ...   [1/6, 1/3, 1/3, 1/6],secrets, "password"
     ... )
-    >>> prior(pi, lambda w, x: 1 if x in w else 0, actions)
+    >>> qify.measure.g.prior(pi, lambda w, x: 1 if x in w else 0, actions)
     0.6666666666666666
     """
     return prior(pi, _from_func(
-        g_func, pi.name, pi.input_values, actions
+        g_func, pi.secret_name, pi.secrets, actions
     ))
 
 
@@ -129,10 +129,10 @@ def prior(pi: ProbabDist, g_func: Callable) -> float:
     >>> pi = qify.ProbabDist(
     ...   [1/6, 1/3, 1/3, 1/6],secrets, "password"
     ... )
-    >>> prior(pi, lambda w, x: 1 if x in w else 0)
+    >>> qify.measure.g.prior(pi, lambda w, x: 1 if x in w else 0)
     0.3333333333333333
     """
-    return prior(pi, g_func, pi.input_values)
+    return prior(pi, g_func, pi.secrets)
 
 
 @multimethod
@@ -189,12 +189,12 @@ def posterior(
 
     We may be interested in the expected case:
 
-    >>> posterior(pi, ch, g_series)
+    >>> qify.measure.g.posterior(pi, ch, g_series)
     0.8333333333333333
 
     Or in the worst scenario possible:
     
-    >>> posterior(pi, ch, g_series, max_case=True)
+    >>> qify.measure.g.posterior(pi, ch, g_series, max_case=True)
     1.0
     """
     joint = ch.push_prior(pi)
@@ -239,12 +239,14 @@ def posterior(
     ...   [(x, "-") for x in secrets] +
     ...   [(x, y) for x in secrets for y in secrets if x != y]
     ... )
-    >>> posterior(pi, ch, lambda w, x: 1 if x in w else 0, actions)
+    >>> qify.measure.g.posterior(
+    ...   pi, ch, lambda w, x: 1 if x in w else 0, actions
+    ... )
     0.8333333333333333
 
     Or in the worst scenario possible:
     
-    >>> posterior(
+    >>> qify.measure.g.posterior(
     ...   pi, ch,
     ...   lambda w, x: 1 if x in w else 0,
     ...   actions, max_case=True
@@ -252,7 +254,7 @@ def posterior(
     1.0
     """
     return posterior(pi, ch, _from_func(
-        g_func, pi.name, pi.input_values, actions
+        g_func, pi.secret_name, pi.secrets, actions
     ), max_case)
 
 
@@ -294,19 +296,21 @@ def posterior(
     ...   [(x, "-") for x in secrets] +
     ...   [(x, y) for x in secrets for y in secrets if x != y]
     ... )
-    >>> posterior(pi, ch, lambda w, x: 1 if x in w else 0)
+    >>> qify.measure.g.posterior(
+    ...   pi, ch, lambda w, x: 1 if x in w else 0
+    ... )
     0.8333333333333333
 
     Or in the worst scenario possible:
     
-    >>> posterior(
+    >>> qify.measure.g.posterior(
     ...   pi, ch,
     ...   lambda w, x: 1 if x in w else 0,
     ...   max_case=True
     ... )
     1.0
     """
-    return posterior(pi, ch, g_func, pi.input_values, max_case)
+    return posterior(pi, ch, g_func, pi.secrets, max_case)
 
 
 @multimethod
@@ -348,9 +352,9 @@ def mult_leakage(
     ...   {(w, x): 1 if x in w else 0 for w, x in g_index},
     ...   index=g_index
     ... )
-    >>> mult_leakage(pi, ch, g_series)
+    >>> qify.measure.g.mult_leakage(pi, ch, g_series)
     1.25
-    >>> mult_leakage(pi, ch, g_series, max_case=True)
+    >>> qify.measure.g.mult_leakage(pi, ch, g_series, max_case=True)
     1.5
     """
     return (
@@ -391,18 +395,18 @@ def mult_leakage(
     ...   [(x, "-") for x in secrets] +
     ...   [(x, y) for x in secrets for y in secrets if x != y]
     ... )
-    >>> mult_leakage(
+    >>> qify.measure.g.mult_leakage(
     ...   pi, ch, lambda w, x: 1 if x in w else 0, actions
     ... )
     1.25
-    >>> mult_leakage(
+    >>> qify.measure.g.mult_leakage(
     ...   pi, ch, lambda w, x: 1 if x in w else 0,
     ...   actions, max_case=True
     ... )
     1.5
     """
     return mult_leakage(pi, ch, _from_func(
-        g_func, pi.name, pi.input_values, actions
+        g_func, pi.secret_name, pi.secrets, actions
     ), max_case)
 
 
@@ -438,17 +442,17 @@ def mult_leakage(
     ...   [(x, "-") for x in secrets] +
     ...   [(x, y) for x in secrets for y in secrets if x != y]
     ... )
-    >>> mult_leakage(
+    >>> qify.measure.g.mult_leakage(
     ...   pi, ch, lambda w, x: 1 if x in w else 0, actions
     ... )
     1.25
-    >>> mult_leakage(
+    >>> qify.measure.g.mult_leakage(
     ...   pi, ch, lambda w, x: 1 if x in w else 0,
     ...   actions, max_case=True
     ... )
     1.5
     """
-    return mult_leakage(pi, ch, g_func, pi.input_values, max_case)
+    return mult_leakage(pi, ch, g_func, pi.secrets, max_case)
 
 
 @multimethod
@@ -490,9 +494,9 @@ def add_leakage(
     ...   {(w, x): 1 if x in w else 0 for w, x in g_index},
     ...   index=g_index
     ... )
-    >>> add_leakage(pi, ch, g_series)
+    >>> qify.measure.g.add_leakage(pi, ch, g_series)
     0.16666666666666663
-    >>> add_leakage(pi, ch, g_series, max_case=True)
+    >>> qify.measure.g.add_leakage(pi, ch, g_series, max_case=True)
     0.33333333333333337
     """
     return (
@@ -533,18 +537,18 @@ def add_leakage(
     ...   [(x, "-") for x in secrets] +
     ...   [(x, y) for x in secrets for y in secrets if x != y]
     ... )
-    >>> add_leakage(
+    >>> qify.measure.g.add_leakage(
     ...   pi, ch, lambda w, x: 1 if x in w else 0, actions
     ... )
     0.16666666666666663
-    >>> add_leakage(
+    >>> qify.measure.g.add_leakage(
     ...   pi, ch, lambda w, x: 1 if x in w else 0,
     ...   actions, max_case=True
     ... )
     0.33333333333333337
     """
     return add_leakage(pi, ch, _from_func(
-        g_func, pi.name, pi.input_values, actions
+        g_func, pi.secret_name, pi.secrets, actions
     ), max_case)
 
 
@@ -580,14 +584,14 @@ def add_leakage(
     ...   [(x, "-") for x in secrets] +
     ...   [(x, y) for x in secrets for y in secrets if x != y]
     ... )
-    >>> add_leakage(
+    >>> qify.measure.g.add_leakage(
     ...   pi, ch, lambda w, x: 1 if x in w else 0, actions
     ... )
     0.16666666666666663
-    >>> add_leakage(
+    >>> qify.measure.g.add_leakage(
     ...   pi, ch, lambda w, x: 1 if x in w else 0,
     ...   actions, max_case=True
     ... )
     0.33333333333333337
     """
-    return add_leakage(pi, ch, g_func, pi.input_values, max_case)
+    return add_leakage(pi, ch, g_func, pi.secrets, max_case)
