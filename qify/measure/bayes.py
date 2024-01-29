@@ -8,21 +8,20 @@ def prior(pi: ProbabDist) -> float:
     ## Example
 
     Consider, for instance, a 2-bit password:
-    
-    >>> from qify.probab_dist import uniform
-    >>> pi = uniform(["00", "01", "10", "11"],  "password")
-    >>> prior(pi)
+
+    >>> import qify
+    >>> pi = qify.probab_dist.uniform(["00", "01", "10", "11"],  "password")
+    >>> qify.measure.bayes.prior(pi)
     0.25
 
     Maybe we know that passwords with distinct bits are more common:
     
-    >>> from qify import ProbabDist
-    >>> pi = ProbabDist(
+    >>> pi = qify.ProbabDist(
     ...   [1/6, 1/3, 1/3, 1/6],
     ...   ["00", "01", "10", "11"],
     ...   "password"
     ... )
-    >>> prior(pi)
+    >>> qify.measure.bayes.prior(pi)
     0.3333333333333333
     """
     return pi.max();
@@ -46,30 +45,29 @@ def posterior(
     behavior of the system: reject immediately the first wrong bit?
 
     >>> import pandas as pd
-    >>> from qify import Channel
-    >>> from qify.probab_dist import uniform
+    >>> import qify
     >>> index = pd.MultiIndex.from_tuples(
     ...   [("00", "Reject 1st"), ("01", "Reject 1st"),
     ...    ("10", "Accept"), ("11", "Reject 2nd")],
     ...   names=["password", "obs"]
     ... )
-    >>> ch = Channel(
+    >>> ch = qify.Channel(
     ...   pd.Series([1, 1, 1, 1], index=index),
     ...   "password",
     ...   ["obs"]
     ... )
-    >>> pi = ProbabDist(
+    >>> pi = qify.ProbabDist(
     ...   [1/6, 1/3, 1/3, 1/6],
     ...   ["00", "01", "10", "11"],
     ...   "password"
     ... )
 
     We may be interested in the expected case:
-    >>> posterior(pi, ch)
+    >>> qify.measure.bayes.posterior(pi, ch)
     0.8333333333333333
 
     Or in the worst scenario possible:
-    >>> posterior(pi, ch, max_case=True)
+    >>> qify.measure.bayes.posterior(pi, ch, max_case=True)
     1.0
     """
     joint = ch.push_prior(pi)
@@ -93,26 +91,25 @@ def mult_leakage(
     ## Example
 
     >>> import pandas as pd
-    >>> from qify import Channel
-    >>> from qify.probab_dist import uniform
+    >>> import qify
     >>> index = pd.MultiIndex.from_tuples(
     ...   [("00", "Reject 1st"), ("01", "Reject 1st"),
     ...    ("10", "Accept"), ("11", "Reject 2nd")],
     ...   names=["password", "obs"]
     ... )
-    >>> ch = Channel(
+    >>> ch = qify.Channel(
     ...   pd.Series([1, 1, 1, 1], index=index),
     ...   "password",
     ...   ["obs"]
     ... )
-    >>> pi = ProbabDist(
+    >>> pi = qify.ProbabDist(
     ...   [1/6, 1/3, 1/3, 1/6],
     ...   ["00", "01", "10", "11"],
     ...   "password"
     ... )
-    >>> mult_leakage(pi, ch)
+    >>> qify.measure.bayes.mult_leakage(pi, ch)
     2.5
-    >>> mult_leakage(pi, ch, max_case=True)
+    >>> qify.measure.bayes.mult_leakage(pi, ch, max_case=True)
     3.0
     """
     return posterior(pi, ch, max_case) / prior(pi)
@@ -130,26 +127,25 @@ def add_leakage(
     ## Example
 
     >>> import pandas as pd
-    >>> from qify import Channel
-    >>> from qify.probab_dist import uniform
+    >>> import qify
     >>> index = pd.MultiIndex.from_tuples(
     ...   [("00", "Reject 1st"), ("01", "Reject 1st"),
     ...    ("10", "Accept"), ("11", "Reject 2nd")],
     ...   names=["password", "obs"]
     ... )
-    >>> ch = Channel(
+    >>> ch = qify.Channel(
     ...   pd.Series([1, 1, 1, 1], index=index),
     ...   "password",
     ...   ["obs"]
     ... )
-    >>> pi = ProbabDist(
+    >>> pi = qify.ProbabDist(
     ...   [1/6, 1/3, 1/3, 1/6],
     ...   ["00", "01", "10", "11"],
     ...   "password"
     ... )
-    >>> add_leakage(pi, ch)
+    >>> qify.measure.bayes.add_leakage(pi, ch)
     0.49999999999999994
-    >>> add_leakage(pi, ch, max_case=True)
+    >>> qify.measure.bayes.add_leakage(pi, ch, max_case=True)
     0.6666666666666667
     """
     return posterior(pi, ch, max_case) - prior(pi)
