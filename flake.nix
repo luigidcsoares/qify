@@ -12,7 +12,11 @@
       pythonPkgs = pkgs.python310Packages;
     in {
       devShells.${system}.default = pkgs.mkShell {
-        buildInputs = with pythonPkgs; [numpy pandas];
+        buildInputs = with pythonPkgs; [
+          numpy
+          pandas
+          multimethod
+        ];
       };
 
       packages.${system}.default = with pythonPkgs; {
