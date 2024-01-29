@@ -392,7 +392,7 @@ def mult_leakage(
     ...   [(x, y) for x in secrets for y in secrets if x != y]
     ... )
     >>> mult_leakage(
-    ...   pi, ch, lambda w, x: 1 if x in w else 0, actions,
+    ...   pi, ch, lambda w, x: 1 if x in w else 0, actions
     ... )
     1.25
     >>> mult_leakage(
@@ -439,7 +439,7 @@ def mult_leakage(
     ...   [(x, y) for x in secrets for y in secrets if x != y]
     ... )
     >>> mult_leakage(
-    ...   pi, ch, lambda w, x: 1 if x in w else 0, actions,
+    ...   pi, ch, lambda w, x: 1 if x in w else 0, actions
     ... )
     1.25
     >>> mult_leakage(
@@ -449,3 +449,145 @@ def mult_leakage(
     1.5
     """
     return mult_leakage(pi, ch, g_func, pi.input_values, max_case)
+
+
+@multimethod
+def add_leakage(
+    pi: ProbabDist,
+    ch: Channel,
+    g_series: pd.Series,
+    max_case: bool = False
+) -> float:
+    """
+    Computes the additive g-leakage of a channel `ch`,
+    given a prior distribution `pi`.
+
+    ## Example
+    >>> import pandas as pd
+    >>> import qify
+    >>> secrets = ["00", "01", "10", "11"]
+    >>> ch_index = pd.MultiIndex.from_tuples(
+    ...   [("00", "Reject 1st"), ("01", "Reject 1st"),
+    ...    ("10", "Accept"), ("11", "Reject 2nd")],
+    ...   names=["password", "obs"]
+    ... )
+    >>> ch = qify.Channel(
+    ...   pd.Series([1, 1, 1, 1], index=ch_index),
+    ...   "password", ["obs"]
+    ... )
+    >>> pi = qify.ProbabDist(
+    ...   [1/6, 1/3, 1/3, 1/6], secrets, "password"
+    ... )
+    >>> actions = (
+    ...   [(x, "-") for x in secrets] +
+    ...   [(x, y) for x in secrets for y in secrets if x != y]
+    ... )
+    >>> g_index = pd.MultiIndex.from_tuples(
+    ...   [(w, x) for w in actions for x in secrets],
+    ...   names=["action", "password"]
+    ... )
+    >>> g_series = pd.Series(
+    ...   {(w, x): 1 if x in w else 0 for w, x in g_index},
+    ...   index=g_index
+    ... )
+    >>> add_leakage(pi, ch, g_series)
+    0.16666666666666663
+    >>> add_leakage(pi, ch, g_series, max_case=True)
+    0.33333333333333337
+    """
+    return (
+        posterior(pi, ch, g_series, max_case) -
+        prior(pi, g_series)
+    )
+
+
+@multimethod
+def add_leakage(
+    pi: ProbabDist,
+    ch: Channel,
+    g_func: Callable,
+    actions: Iterable,
+    max_case: bool = False
+) -> float:
+    """
+    Computes the additive g-leakage of a channel `ch`,
+    given a prior distribution `pi`.
+
+    ## Example
+    >>> import pandas as pd
+    >>> import qify
+    >>> secrets = ["00", "01", "10", "11"]
+    >>> ch_index = pd.MultiIndex.from_tuples(
+    ...   [("00", "Reject 1st"), ("01", "Reject 1st"),
+    ...    ("10", "Accept"), ("11", "Reject 2nd")],
+    ...   names=["password", "obs"]
+    ... )
+    >>> ch = qify.Channel(
+    ...   pd.Series([1, 1, 1, 1], index=ch_index),
+    ...   "password", ["obs"]
+    ... )
+    >>> pi = qify.ProbabDist(
+    ...   [1/6, 1/3, 1/3, 1/6], secrets, "password"
+    ... )
+    >>> actions = (
+    ...   [(x, "-") for x in secrets] +
+    ...   [(x, y) for x in secrets for y in secrets if x != y]
+    ... )
+    >>> add_leakage(
+    ...   pi, ch, lambda w, x: 1 if x in w else 0, actions
+    ... )
+    0.16666666666666663
+    >>> add_leakage(
+    ...   pi, ch, lambda w, x: 1 if x in w else 0,
+    ...   actions, max_case=True
+    ... )
+    0.33333333333333337
+    """
+    return add_leakage(pi, ch, _from_func(
+        g_func, pi.name, pi.input_values, actions
+    ), max_case)
+
+
+@multimethod
+def add_leakage(
+    pi: ProbabDist,
+    ch: Channel,
+    g_func: Callable,
+    max_case: bool = False
+) -> float:
+    """
+    Computes the additive g-leakage of a channel `ch`,
+    given a prior distribution `pi`. Assumes that the set of
+    actions is the same of the secrets.
+
+    ## Example
+    >>> import pandas as pd
+    >>> import qify
+    >>> secrets = ["00", "01", "10", "11"]
+    >>> ch_index = pd.MultiIndex.from_tuples(
+    ...   [("00", "Reject 1st"), ("01", "Reject 1st"),
+    ...    ("10", "Accept"), ("11", "Reject 2nd")],
+    ...   names=["password", "obs"]
+    ... )
+    >>> ch = qify.Channel(
+    ...   pd.Series([1, 1, 1, 1], index=ch_index),
+    ...   "password", ["obs"]
+    ... )
+    >>> pi = qify.ProbabDist(
+    ...   [1/6, 1/3, 1/3, 1/6], secrets, "password"
+    ... )
+    >>> actions = (
+    ...   [(x, "-") for x in secrets] +
+    ...   [(x, y) for x in secrets for y in secrets if x != y]
+    ... )
+    >>> add_leakage(
+    ...   pi, ch, lambda w, x: 1 if x in w else 0, actions
+    ... )
+    0.16666666666666663
+    >>> add_leakage(
+    ...   pi, ch, lambda w, x: 1 if x in w else 0,
+    ...   actions, max_case=True
+    ... )
+    0.33333333333333337
+    """
+    return add_leakage(pi, ch, g_func, pi.input_values, max_case)
