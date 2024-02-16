@@ -1,17 +1,17 @@
 from collections.abc import Callable, Iterable
-from multimethod import multimethod
-from typing import Any
 
+from multimethod import multimethod
 import pandas as pd
 
 from qify.channel.core import Channel
 from qify.probab_dist.core import ProbabDist
+from qify.typing import AttrName, AttrValue
 
 def _from_func(
     g_func: Callable,
-    secret_name: str,
-    secrets: Iterable,
-    actions: Iterable
+    secret_name: AttrName,
+    secrets: Iterable[AttrValue],
+    actions: Iterable[AttrValue]
 ) -> pd.Series:
     """
     Takes a callable and converts into a pandas Series representing
@@ -85,7 +85,7 @@ def prior(pi: ProbabDist, g_series: pd.Series) -> float:
 def prior(
     pi: ProbabDist,
     g_func: Callable,
-    actions: Iterable
+    actions: Iterable[AttrValue]
 ) -> float:
     """
     Computes the prior g-vulnerability of a distribution.
@@ -209,7 +209,7 @@ def posterior(
     pi: ProbabDist,
     ch: Channel,
     g_func: Callable,
-    actions: Iterable,
+    actions: Iterable[AttrValue],
     max_case: bool = False
 ) -> float:
     """
@@ -368,7 +368,7 @@ def mult_leakage(
     pi: ProbabDist,
     ch: Channel,
     g_func: Callable,
-    actions: Iterable,
+    actions: Iterable[AttrValue],
     max_case: bool = False
 ) -> float:
     """
@@ -510,7 +510,7 @@ def add_leakage(
     pi: ProbabDist,
     ch: Channel,
     g_func: Callable,
-    actions: Iterable,
+    actions: Iterable[AttrValue],
     max_case: bool = False
 ) -> float:
     """

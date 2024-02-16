@@ -1,11 +1,13 @@
 from __future__ import annotations
+from collections.abc import Collection
 
 import numpy as np
 import pandas as pd
 
-from qify.probab_dist.core import ProbabDist
+from qify.probab_dist.core import ProbabDist, uniform
+from qify.typing import AttrName, AttrValue
 
-def is_proper(ch: pd.Series, input_level: int | str = 0) -> bool:
+def is_proper(ch: pd.Series, secret_name: AttrName = 0) -> bool:
     """
     Checks if `ch` really corresponds to a channel. That is,
     it's "rows" are 1-summing and all entries are nonnegative.
@@ -34,14 +36,14 @@ def is_proper(ch: pd.Series, input_level: int | str = 0) -> bool:
     >>> qify.channel.is_proper(channel)
     False
     """
-    row_sums = ch.groupby(level=input_level).sum()
-    return np.isclose(row_sums, 1).all() and ch.ge(0).all()
+    row_sums = ch.groupby(level=secret_name).sum()
+    return bool(np.isclose(row_sums, 1).all() and ch.ge(0).all())
 
 
 def from_pandas(
-        df: pd.DataFrame,
-        secret_name: str,
-        output_names: list[str]
+    df: pd.DataFrame,
+    secret_name: AttrName,
+    output_names: Collection[AttrName]
 ) -> Channel:
     """
     Constructs a channel from a dataset.
@@ -69,8 +71,8 @@ def from_pandas(
     dtype: float64
     """
     freq_input = df[secret_name].value_counts()
-    dists = (
-        df.groupby([secret_name] + output_names)
+    dists = pd.Series(
+        df.groupby([secret_name, *output_names])
         .size()
         .div(freq_input, level=secret_name)
     )
@@ -84,11 +86,11 @@ class Channel:
     reduce memory usage when channel matrices are sparse.
     """
     def __init__(
-            self,
-            dists: pd.Series,
-            secret_name: str,
-            output_names: list[str],
-            bypass_check: bool = False,
+        self,
+        dists: pd.Series,
+        secret_name: AttrName,
+        output_names: Collection[AttrName],
+        bypass_check: bool = False,
     ):
         if not bypass_check and not is_proper(dists):
             raise ValueError("Input does not form a valid channel!")
@@ -98,19 +100,113 @@ class Channel:
         self._output_names = output_names
         self._bypass_check = bypass_check
 
-    
-    @property
-    def secret_name(self) -> str:
-        return self._secret_name
-    
-    
-    @property
-    def output_names(self) -> list[str]:
-        return self._output_names
-
 
     def __repr__(self) -> str:
         return repr(self._dists)
+
+
+    @property
+    def secret_name(self) -> AttrName:
+        return self._secret_name
+    
+
+    @property
+    def output_names(self) -> Collection[AttrName]:
+        return self._output_names
+
+
+    @property
+    def secrets(self) -> pd.Index:
+        return self._dists.index.droplevel(self.output_names)
+
+
+    @property
+    def outputs(self) -> pd.Index:
+        return self._dists.index.droplevel(self.secret_name)
+
+    
+    @property
+    def reduced(self) -> Channel:
+        """
+        Returns the reduced form of the channel. Column labels are
+        transformed to tuples, to indicate which columns were combined.
+
+        ## Example
+
+        >>> import pandas as pd
+        >>> import qify
+        >>> index = pd.MultiIndex.from_tuples([
+        ...   ("x1", "y1"), ("x2", "y1"), ("x2", "y2"), ("x2", "y3"),
+        ...   ("x3", "y1"), ("x3", "y2"), ("x3", "y3")
+        ...  ], names=["X", "Y"])
+        >>> ch = qify.channel.core.Channel(pd.Series(
+        ...   [1, 1/4, 1/2, 1/4, 1/2, 1/3, 1/6], index=index
+        ... ), "X", ["Y"])
+        >>> ch.reduced
+        X   Y       
+        x1  (y1,)       1.00
+        x2  (y1,)       0.25
+        x3  (y1,)       0.50
+        x2  (y2, y3)    0.75
+        x3  (y2, y3)    0.50
+        dtype: float64
+        """
+        # We build a hyper by pushing a uniform prior (hypers are easier
+        # to reduce, as we just need to group columns that are equal)
+        secrets = pd.Series(self.secrets.drop_duplicates())
+        pi = uniform(secrets, self.secret_name)
+        joint = self.push_prior(pi)
+        outer = joint.groupby(self.output_names).sum()
+        hyper = joint.div(outer)
+
+        # This dict has entries of the form 
+        # ((x1, prob), ..., (xn, prob)): [outer probab, (y1, ..., yk)]
+        reduced_hyper = {}
+        for label, group in hyper.groupby(self.output_names):
+            key = tuple(group.droplevel(self.output_names).items())
+            reduced_hyper[key] = reduced_hyper.get(key, [0, []])
+            reduced_hyper[key][0] += outer.loc[label]
+            reduced_hyper[key][1] += (label,)
+
+        reduced_index = []
+        reduced_hyper_values = []
+        reduced_outer_index = []
+        reduced_outer_values = []
+        for secret_probabs, output_probabs in reduced_hyper.items():
+            outer_probab = output_probabs[0]
+            merged_output_name = tuple(zip(*output_probabs[1]))
+
+            for secret, probab in secret_probabs:
+                reduced_hyper_values.append(probab)
+                reduced_index.append((secret, *merged_output_name))
+
+            reduced_outer_values.append(outer_probab)
+            reduced_outer_index.append(merged_output_name)
+
+        attr_names = [self.secret_name, *(self.output_names)]
+        reduced_hyper_series = pd.Series(
+            reduced_hyper_values,
+            index=pd.MultiIndex.from_tuples(
+                reduced_index,
+                names=attr_names
+            )
+        )
+
+        reduced_outer_series = pd.Series(
+            reduced_outer_values,
+            index=pd.MultiIndex.from_tuples(
+                reduced_outer_index,
+                names=self.output_names
+            )
+        )
+
+        reduced_joint = reduced_hyper_series.mul(reduced_outer_series)
+        reduced_channel = pi.pow(-1).mul(reduced_joint)
+
+        return Channel(
+            reduced_channel.reorder_levels(attr_names), 
+            self.secret_name, self.output_names
+        )
 
 
     def inspect(self) -> pd.Series:
@@ -149,7 +245,7 @@ class Channel:
         58   m         0.4
         dtype: float64
         """
-        return pi.mul(self._dists, level=self.secret_name)
+        return pi.mul(self._dists)
 
     
     def cascade(self, other: Channel) -> Channel:
@@ -201,7 +297,7 @@ class Channel:
         Name: bc, dtype: float64
         """
         merge_on = other.secret_name
-        group_on = [self.secret_name] + other.output_names
+        group_on = [self.secret_name, *other.output_names]
         
         dists = (
             self._dists.reset_index(name="b").merge(
@@ -213,7 +309,7 @@ class Channel:
         )
 
         return Channel(
-            dists,
+            pd.Series(dists),
             self.secret_name,
             other.output_names,
             bypass_check=self._bypass_check

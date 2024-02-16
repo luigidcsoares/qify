@@ -2,7 +2,7 @@
   description = "QIFy - A Python QIF library";
 
   inputs = {
-    nixpkgs.url = github:NixOS/nixpkgs;
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
   };
 
   outputs = { self, nixpkgs }: 
@@ -12,29 +12,30 @@
       pythonPkgs = pkgs.python310Packages;
     in {
       devShells.${system}.default = pkgs.mkShell {
-        buildInputs = with pythonPkgs; [
-          numpy
-          pandas
-          multimethod
+        buildInputs = [
+          pkgs.pyright
+          pythonPkgs.numpy
+          pythonPkgs.pandas
+          pythonPkgs.multimethod
         ];
       };
 
-      packages.${system}.default = with pythonPkgs; {
-        qify = buildPythonPackage rec {
-          pname = "qify";
-          version = "0.0.1";
-          src = ./.;
-          
-          nativeBuildInputs = [ setuptools ];
+      # packages.${system}.default = with pythonPkgs; {
+      #   qify = buildPythonPackage rec {
+      #     pname = "qify";
+      #     version = "0.0.1";
+      #     src = ./.;
+      #     
+      #     nativeBuildInputs = [ setuptools ];
 
-          meta = {
-            description = "QIFy - A Python QIF library";
-            license = "";
-          };
+      #     meta = {
+      #       description = "QIFy - A Python QIF library";
+      #       license = "";
+      #     };
 
-          # Placeholder for the sha256 hash, replace with the actual hash
-          sha256 = "...";
-        };
-      };
+      #     # Placeholder for the sha256 hash, replace with the actual hash
+      #     sha256 = "...";
+      #   };
+      # };
     };
 }
