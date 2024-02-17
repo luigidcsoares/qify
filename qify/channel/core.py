@@ -136,11 +136,12 @@ class Channel:
         >>> import pandas as pd
         >>> import qify
         >>> index = pd.MultiIndex.from_tuples([
-        ...   ("x1", "y1"), ("x2", "y1"), ("x2", "y2"), ("x2", "y3"),
-        ...   ("x3", "y1"), ("x3", "y2"), ("x3", "y3")
+        ...   ("x1", "y1"), ("x2", "y1"), ("x3", "y1"), 
+        ...   ("x2", "y2"), ("x3", "y2"),
+        ...   ("x2", "y3"), ("x3", "y3")
         ...  ], names=["X", "Y"])
         >>> ch = qify.channel.core.Channel(pd.Series(
-        ...   [1, 1/4, 1/2, 1/4, 1/2, 1/3, 1/6], index=index
+        ...   [1, 1/4, 1/2, 1/2, 1/3, 1/4, 1/6], index=index
         ... ), "X", ["Y"])
         >>> ch.reduced
         X   Y       
@@ -163,7 +164,8 @@ class Channel:
         # ((x1, prob), ..., (xn, prob)): [outer probab, (y1, ..., yk)]
         reduced_hyper = {}
         for label, group in hyper.groupby(self.output_names):
-            key = tuple(group.droplevel(self.output_names).items())
+            indexed_probabs = group.droplevel(self.output_names).items()
+            key = tuple(sorted(indexed_probabs))
             reduced_hyper[key] = reduced_hyper.get(key, [0, []])
             reduced_hyper[key][0] += outer.loc[label]
             reduced_hyper[key][1] += (label,)
