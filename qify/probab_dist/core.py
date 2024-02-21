@@ -1,9 +1,10 @@
 from __future__ import annotations
-from decimal import Decimal
-from typing import Any
+from collections.abc import Collection
 
 import numpy as np
 import pandas as pd
+
+from qify.typing import AttrName, AttrValue
 
 def is_proper(dist: pd.Series) -> bool:
     """
@@ -26,10 +27,10 @@ def is_proper(dist: pd.Series) -> bool:
     >>> qify.probab_dist.is_proper(dist)
     False
     """
-    return np.isclose(dist.sum(), 1) and dist.ge(0).all()
+    return bool(np.isclose(dist.sum(), 1) and dist.ge(0).all())
 
 
-def uniform(values: set[Any], name: str) -> ProbabDist:
+def uniform(values: Collection[AttrValue], name: AttrName) -> ProbabDist:
     """
     Constructs a uniform distribution for the given values.
 
@@ -57,10 +58,10 @@ class ProbabDist:
     in other computations (merging, etc).
     """
     def __init__(
-        self,
-        dist: list[float | Decimal],
-        values: list[Any],
-        name: str
+        self, 
+        dist: Collection[float],
+        values: Collection[AttrValue], 
+        name: AttrName
     ):
         index = pd.Index(values, name=name)
         self._dist = pd.Series(dist, index=index)
@@ -70,19 +71,23 @@ class ProbabDist:
 
         # Increment the class with some methods from pandas Series,
         # so that it works kinda like a wrapper for Series:
-        methods = ["min", "max", "sum", "mul"]
+        methods = [
+            "min", "max", "sum", "add", 
+            "sub", "mul", "div", "pow"
+        ]
+
         for method in methods:
             setattr(self, method, getattr(self._dist, method))
         
 
     @property
+    def secret_name(self) -> AttrName:
+        return self.secrets.name
+
+
+    @property
     def secrets(self) -> pd.Index:
         return self._dist.index
-
-    
-    @property
-    def secret_name(self) -> str:
-        return self.secrets.name
 
 
     def __repr__(self) -> str:

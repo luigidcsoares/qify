@@ -1,5 +1,4 @@
 import doctest
-import unittest
 
 from qify.channel import core
 
